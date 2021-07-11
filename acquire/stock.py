@@ -118,7 +118,7 @@ class Single:
         return df
 
 
-class Location:
+class Compute:
     """
     @ 从本地获取基础数据数据，根据基础数据获得所需形状的数据，计算adj等
     """
@@ -127,16 +127,6 @@ class Location:
         self.read_path = "%sdaily/%s/%s.csv" % (root, kind, ts_code)
         self.ts_code = ts_code
         self.kind = kind
-
-    def get_single_data(self):
-        # 获取到的数据还是比较干净，但是为了严谨，我们还是有必要做一些去重的清理工作和时间解析工作，以保证客户得到的数据是以时间序列为基准的
-        df = pd.read_csv(filepath_or_buffer=self.read_path, parse_dates=["trade_date"])
-        df.sort_values(by=["trade_date"], inplace=True)
-        df.drop_duplicates(subset=["trade_date"], inplace=True)
-        df.reset_index(drop=True, inplace=True)
-        # df["trade_date"] = pd.to_datetime(df["trade_date"])
-        # df.set_index(keys=["trade_date"], inplace=True)
-        return df
 
     def calc_adj_data(self):
         """
@@ -158,15 +148,3 @@ class Location:
         df["hfq_high"] = df["high"] / df["high"] * df["hfq_close"]
         df["hfq_low"] = df["low"] / df["low"] * df["hfq_close"]
         return df
-
-    # def save_daily_2_location(self, df: pd.DataFrame):
-    #     kind_path = self.read_path
-    #     mode = ""
-    #     header = False
-    #     if os.path.exists(kind_path):
-    #         mode = "a"
-    #     else:
-    #         mode = "w"
-    #         header = True
-    #     df.to_csv(path_or_buf=kind_path, index=False, mode=mode, header=header)
-    #     print("%s已存入---" % self.ts_code)

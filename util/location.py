@@ -32,3 +32,16 @@ def save_csv(ts_code, df: pd.DataFrame, root, kind="daily/price/"):
         header = True
     df.to_csv(path_or_buf=file_path, index=False, mode=mode, header=header)
     print("股票：%s已存入到%s" % (ts_code, file_path))
+
+
+def read_from_csv(ts_code, root, kind="daily/price/"):
+    file_path = "%s%s%s.csv" % (root, kind, ts_code)
+    df = pd.read_csv(
+        filepath_or_buffer=file_path,
+        parse_dates=["trade_date"]
+    )
+    # 清洗一下数据，以求保证数据质量
+    df.sort_values(by=["trade_date"], inplace=True)
+    df.drop_duplicates(subset=["trade_date"], inplace=True)
+    df.reset_index(drop=True, inplace=True)
+    return df
