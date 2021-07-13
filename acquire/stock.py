@@ -15,10 +15,12 @@ from datetime import datetime
 import os
 from util import response
 from util import location
+from util import location
 
 
-def _get_from_waditu(api_name, fields: str = '', **kwargs):
-    return response.get_from_waditu(api_name, fields, **kwargs)
+#
+# def _get_from_waditu(api_name, fields: str = '', **kwargs):
+#     return response.get_from_waditu(api_name, fields, **kwargs)
 
 
 class BasicInfo:
@@ -28,7 +30,7 @@ class BasicInfo:
     """
 
     def __init__(self):
-        self.stock_basic = _get_from_waditu(api_name="stock_basic", fields="ts_code,symbol,name,industry,list_date")
+        self.stock_basic = response.get_from_waditu(api_name="stock_basic", fields="ts_code,symbol,name,industry,list_date")
         self.ts_code_list = list(self.stock_basic["ts_code"])
         self.symbol_list = list(self.stock_basic["symbol"])
         self.name_list = list(self.stock_basic["name"])
@@ -53,17 +55,17 @@ class History:
     def save_basic_price_data(self):
         today = datetime.today().strftime("%Y%m%d")
         for ts_code, start_time in self.code_date.items():
-            price_df = _get_from_waditu(api_name="daily", ts_code=ts_code, start_date=start_time, end_date=today, fields="ts_code,trade_date,open,high,low,close,pre_close,vol,amount")
+            price_df = response.get_from_waditu(api_name="daily", ts_code=ts_code, start_date=start_time, end_date=today, fields="ts_code,trade_date,open,high,low,close,pre_close,vol,amount")
             last_date = price_df.iloc[-1, 1]
             if last_date > start_time:
-                next_df = _get_from_waditu(api_name="daily", ts_code=ts_code, start_date=start_time, end_date=last_date, fields="ts_code,trade_date,open,high,low,close,pre_close,vol,amount")
+                next_df = response.get_from_waditu(api_name="daily", ts_code=ts_code, start_date=start_time, end_date=last_date, fields="ts_code,trade_date,open,high,low,close,pre_close,vol,amount")
                 price_df = price_df.append(next_df, ignore_index=True)
             price_df.sort_values(by="trade_date", ascending=True, ignore_index=True, inplace=True)
 
-            basic_df = _get_from_waditu(api_name="daily_basic", ts_code=ts_code, start_date=start_time, end_date=today)
+            basic_df = response.get_from_waditu(api_name="daily_basic", ts_code=ts_code, start_date=start_time, end_date=today)
             last_date = basic_df.iloc[-1, 1]
             if last_date > start_time:
-                next_df = _get_from_waditu(api_name="daily_basic", ts_code=ts_code, start_date=start_time, end_date=last_date)
+                next_df = response.get_from_waditu(api_name="daily_basic", ts_code=ts_code, start_date=start_time, end_date=last_date)
                 basic_df = basic_df.append(next_df, ignore_index=True)
             basic_df.sort_values(by="trade_date", ascending=True, ignore_index=True, inplace=True)
             location.save_csv(ts_code=ts_code, df=price_df, root=self.root)
@@ -85,36 +87,36 @@ class Single:
         # self.daily_basic = self._get_daily_basic()
 
     def get_daily_price(self):
-        df = _get_from_waditu(api_name="daily", ts_code=self.ts_code, start_date=self.start_date, end_date=self.end_date, fields="ts_code,trade_date,open,high,low,close,pre_close,vol,amount")
+        df = response.get_from_waditu(api_name="daily", ts_code=self.ts_code, start_date=self.start_date, end_date=self.end_date, fields="ts_code,trade_date,open,high,low,close,pre_close,vol,amount")
         last_date = df.iloc[-1, 1]
         if last_date > self.start_date:
-            next_df = _get_from_waditu(api_name="daily", ts_code=self.ts_code, start_date=self.start_date, end_date=last_date, fields="ts_code,trade_date,open,high,low,close,pre_close,vol,amount")
+            next_df = response.get_from_waditu(api_name="daily", ts_code=self.ts_code, start_date=self.start_date, end_date=last_date, fields="ts_code,trade_date,open,high,low,close,pre_close,vol,amount")
             df = df.append(next_df, ignore_index=True)
         df.sort_values(by="trade_date", ascending=True, ignore_index=True, inplace=True)  # 因为获取到的数据是时间倒序的，所以我们要进行时间的重新排列
         return df
 
     def get_name_change_list(self):
-        df = _get_from_waditu(api_name="namechange", ts_code=self.ts_code, fields="ts_code,name,start_date,end_date")
+        df = response.get_from_waditu(api_name="namechange", ts_code=self.ts_code, fields="ts_code,name,start_date,end_date")
         # df["start_date"] = pd.to_datetime(df["start_date"])
         df.sort_values(by=["start_date"], inplace=True)
         return df
 
     def get_daily_basic(self):
-        df = _get_from_waditu(api_name="daily_basic", ts_code=self.ts_code, start_date=self.start_date, end_date=self.end_date)
+        df = response.get_from_waditu(api_name="daily_basic", ts_code=self.ts_code, start_date=self.start_date, end_date=self.end_date)
         last_date = df.iloc[-1, 1]
         if last_date > self.start_date:
-            next_df = _get_from_waditu(api_name="daily_basic", ts_code=self.ts_code, start_date=self.start_date, end_date=last_date)
+            next_df = response.get_from_waditu(api_name="daily_basic", ts_code=self.ts_code, start_date=self.start_date, end_date=last_date)
             df = df.append(next_df, ignore_index=True)
         df.sort_values(by="trade_date", ascending=True, ignore_index=True, inplace=True)  # 因为获取到的数据是时间倒序的，所以我们要进行时间的重新排列
         return df
 
     def get_recent_price(self, start_date_, end_date_):
-        df = _get_from_waditu(api_name="daily", ts_code=self.ts_code, start_date=start_date_, end_date=end_date_, fields="ts_code,trade_date,open,high,low,close,pre_close,vol,amount")
+        df = response.get_from_waditu(api_name="daily", ts_code=self.ts_code, start_date=start_date_, end_date=end_date_, fields="ts_code,trade_date,open,high,low,close,pre_close,vol,amount")
         df.sort_values(by="trade_date", ascending=True, ignore_index=True, inplace=True)
         return df
 
     def get_recent_basic(self):
-        df = _get_from_waditu(api_name="daily_basic", ts_code=self.ts_code, start_date=self.start_date, end_date=self.end_date)
+        df = response.get_from_waditu(api_name="daily_basic", ts_code=self.ts_code, start_date=self.start_date, end_date=self.end_date)
         return df
 
 
@@ -148,3 +150,47 @@ class Compute:
         df["hfq_high"] = df["high"] / df["high"] * df["hfq_close"]
         df["hfq_low"] = df["low"] / df["low"] * df["hfq_close"]
         return df
+
+
+class TodayData:
+    def __init__(self):
+        self.today_str = datetime.today().strftime("%Y%m%d")
+        self.today_stock_price = response.get_from_waditu("daily", trade_date=self.today_str, fields="ts_code,trade_date,open,high,low,close,pre_close,vol,amount")
+        self.today_stock_basic = response.get_from_waditu("daily_basic", trade_date=self.today_str)
+
+    def save2csv(self, root):
+        count = 0
+        for idx in self.today_stock_price.index:
+            cur_price_df = self.today_stock_price.iloc[idx:idx + 1, :]
+            cur_basic_df = self.today_stock_basic.iloc[idx:idx + 1, :]
+            cur_code = cur_price_df.iloc[0]["ts_code"]
+            location.save_csv(ts_code=cur_code, df=cur_price_df, root=root)
+            location.save_csv(ts_code=cur_code, df=cur_basic_df, root=root, kind="daily/basic/")
+            print("%s已存入" % cur_code)
+            count += 1
+        print(self.today_str, str(count), "已存入完毕")
+
+
+class RecentData:
+    def __init__(self, start_date, end_date=datetime.today().strftime("%Y%m%d")):
+        self.start_date = start_date
+        self.end_date = end_date
+        stock_basic_df = response.get_from_waditu(api_name="stock_basic", fields="ts_code,name")
+        self.ts_code_list = list(stock_basic_df["ts_code"])
+
+    def _get_recent_price(self, ts_code):
+        df = response.get_from_waditu(api_name="daily", ts_code=ts_code, start_date=self.start_date, end_date=self.end_date, fields="ts_code,trade_date,open,high,low,close,pre_close,vol,amount")
+        df.sort_values(by="trade_date", ascending=True, ignore_index=True, inplace=True)
+        return df
+
+    def _get_recent_basic(self, ts_code):
+        df = response.get_from_waditu(api_name="daily_basic", ts_code=ts_code, start_date=self.start_date, end_date=self.end_date)
+        df.sort_values(by="trade_date", ascending=True, ignore_index=True, inplace=True)
+        return df
+
+    def save2csv(self, root):
+        for ts_code in self.ts_code_list:
+            price_df = self._get_recent_price(ts_code=ts_code)
+            basic_df = self._get_recent_basic(ts_code=ts_code)
+            location.save_csv(ts_code=ts_code, df=price_df, root=root)
+            location.save_csv(ts_code=ts_code, df=basic_df, root=root, kind="daily/basic/")
