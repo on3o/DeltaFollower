@@ -152,23 +152,28 @@ class Compute:
         return df
 
 
-class TodayData:
-    def __init__(self):
-        self.today_str = datetime.today().strftime("%Y%m%d")
-        self.today_stock_price = response.get_from_waditu("daily", trade_date=self.today_str, fields="ts_code,trade_date,open,high,low,close,pre_close,vol,amount")
-        self.today_stock_basic = response.get_from_waditu("daily_basic", trade_date=self.today_str)
+class OneDailyData:
+    """
+    获取某天的daily和basic基础数据，调用svae2csv()方法存到本地
+    默认设置的交易日期为当日交易日期
+    """
+
+    def __init__(self, trade_date=datetime.today().strftime("%Y%m%d")):
+        self.trade_date = trade_date
+        self.one_daily_stock_price = response.get_from_waditu("daily", trade_date=trade_date, fields="ts_code,trade_date,open,high,low,close,pre_close,vol,amount")
+        self.one_daily_stock_basic = response.get_from_waditu("daily_basic", trade_date=trade_date)
 
     def save2csv(self, root):
         count = 0
-        for idx in self.today_stock_price.index:
-            cur_price_df = self.today_stock_price.iloc[idx:idx + 1, :]
-            cur_basic_df = self.today_stock_basic.iloc[idx:idx + 1, :]
+        for idx in self.one_daily_stock_price.index:
+            cur_price_df = self.one_daily_stock_price.iloc[idx:idx + 1, :]
+            cur_basic_df = self.one_daily_stock_basic.iloc[idx:idx + 1, :]
             cur_code = cur_price_df.iloc[0]["ts_code"]
             location.save_csv(ts_code=cur_code, df=cur_price_df, root=root)
             location.save_csv(ts_code=cur_code, df=cur_basic_df, root=root, kind="daily/basic/")
             print("%s已存入" % cur_code)
             count += 1
-        print(self.today_str, str(count), "已存入完毕")
+        print(self.trade_date, str(count), "已存入完毕")
 
 
 class RecentData:
@@ -179,18 +184,21 @@ class RecentData:
         self.ts_code_list = list(stock_basic_df["ts_code"])
 
     def _get_recent_price(self, ts_code):
-        df = response.get_from_waditu(api_name="daily", ts_code=ts_code, start_date=self.start_date, end_date=self.end_date, fields="ts_code,trade_date,open,high,low,close,pre_close,vol,amount")
+        df = response.get_from_waditu("daily", ts_code=ts_code, start_date=self.start_date, end_date=self.end_date, fields="ts_code,trade_date,open,high,low,close,pre_close,vol,amount")
         df.sort_values(by="trade_date", ascending=True, ignore_index=True, inplace=True)
         return df
 
     def _get_recent_basic(self, ts_code):
-        df = response.get_from_waditu(api_name="daily_basic", ts_code=ts_code, start_date=self.start_date, end_date=self.end_date)
+        df = response.get_from_waditu("daily_basic", ts_code=ts_code, start_date=self.start_date, end_date=self.end_date)
         df.sort_values(by="trade_date", ascending=True, ignore_index=True, inplace=True)
         return df
 
     def save2csv(self, root):
-        for ts_code in self.ts_code_list:
+        count = 0
+        for ts_code in self.ts_code_list[:20]:
             price_df = self._get_recent_price(ts_code=ts_code)
             basic_df = self._get_recent_basic(ts_code=ts_code)
             location.save_csv(ts_code=ts_code, df=price_df, root=root)
             location.save_csv(ts_code=ts_code, df=basic_df, root=root, kind="daily/basic/")
+            count += 1
+        print(str(count), "已存入完毕")
