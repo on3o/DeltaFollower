@@ -120,7 +120,7 @@ class Single:
         return df
 
 
-class Compute:
+class Indicators:
     """
     @ 从本地获取基础数据数据，根据基础数据获得所需形状的数据，计算adj等
     """
