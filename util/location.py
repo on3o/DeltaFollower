@@ -35,12 +35,20 @@ def save_csv(ts_code, df: pd.DataFrame, root, kind="daily/price/"):
 
 
 def read_from_csv(ts_code, root, kind="daily/price/"):
+    """
+    :param ts_code: tushare的股票代码
+    :param root: 根目录
+    :param kind: 存储的类型
+    :return: pandas.DataFrame
+    1. 排序（交易日期）
+    2. 去重
+    3. 重新设置Index
+    """
     file_path = "%s%s%s.csv" % (root, kind, ts_code)
     df = pd.read_csv(
         filepath_or_buffer=file_path,
         parse_dates=["trade_date"]
     )
-    # 清洗一下数据，以求保证数据质量
     df.sort_values(by=["trade_date"], inplace=True)
     df.drop_duplicates(subset=["trade_date"], inplace=True)
     df.reset_index(drop=True, inplace=True)

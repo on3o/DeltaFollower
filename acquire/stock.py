@@ -155,8 +155,9 @@ class Indicators:
         assert self.adj_price is not None, "必须使用复权价格计算"
         vector = adj + feature
         vector_pct = vector + "_pct"
-        self.adj_price[vector_pct] = self.adj_price[vector] / self.adj_price[vector].shift() - 1
-        return self.adj_price
+        df = self.adj_price
+        df[vector_pct] = df[vector] / df[vector].shift() - 1
+        return df
 
 
 class OneDailyData:
