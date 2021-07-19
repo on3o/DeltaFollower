@@ -9,6 +9,8 @@
 2021-06-30 0:47    1.0         None
 """
 import time
+
+import pandas
 import pandas as pd
 from acquire.config import api
 from datetime import datetime
@@ -125,18 +127,16 @@ class Indicators:
     @ 从本地获取基础数据数据，根据基础数据获得所需形状的数据，计算adj等
     """
 
-    def __init__(self, root, ts_code, kind="price"):
-        self.read_path = "%sdaily/%s/%s.csv" % (root, kind, ts_code)
-        self.ts_code = ts_code
-        self.kind = kind
+    def __init__(self, df: pandas.DataFrame):
+        self.df = df
+        self.adj_price = self._calc_adj_data()
 
-    def calc_adj_data(self):
+    def _calc_adj_data(self):
         """
         计算复权价，复权因子
         :return:含有前复权、后复权“开高低收”，复权因子，涨跌幅的df
         """
-        assert self.kind == "price", "计算股票复权价，类型必须为基础行情数据"
-        df = self.get_single_data()
+        df = self.df
         df["pct_change"] = df["close"] / df["pre_close"] - 1
         df["adj_factor"] = (1 + df["pct_change"]).cumprod()
         df["hfq_close"] = df["adj_factor"] * (df.iloc[0]["close"] / df.iloc[0]["adj_factor"])
@@ -150,6 +150,13 @@ class Indicators:
         df["hfq_high"] = df["high"] / df["high"] * df["hfq_close"]
         df["hfq_low"] = df["low"] / df["low"] * df["hfq_close"]
         return df
+
+    def pct_change(self, adj="hfq_", feature="close"):
+        assert self.adj_price is not None, "必须使用复权价格计算"
+        vector = adj + feature
+        vector_pct = vector + "_pct"
+        self.adj_price[vector_pct] = self.adj_price[vector] / self.adj_price[vector].shift() - 1
+        return self.adj_price
 
 
 class OneDailyData:
