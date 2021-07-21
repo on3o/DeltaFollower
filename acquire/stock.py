@@ -18,6 +18,7 @@ import os
 from util import response
 from util import location
 from util import location
+from decimal import Decimal, ROUND_HALF_UP
 
 
 #
@@ -128,8 +129,10 @@ class Indicators:
     """
 
     def __init__(self, df: pandas.DataFrame):
+        df["trade_date"] = pd.to_datetime(df["trade_date"])
         self.df = df
-        self.adj_price = self._calc_adj_data()
+        self.df = self._calc_adj_data()
+        self.df = self._calc_up_down_limit()
 
     def _calc_adj_data(self):
         """
@@ -149,6 +152,42 @@ class Indicators:
         df["hfq_open"] = df["open"] / df["close"] * df["hfq_close"]
         df["hfq_high"] = df["high"] / df["high"] * df["hfq_close"]
         df["hfq_low"] = df["low"] / df["low"] * df["hfq_close"]
+        return df
+
+    def _calc_up_down_limit(self):
+        """
+        计算涨跌停价格，当然这里需要获取股票的历史名称，有的是st股，涨跌停的价格是不同的
+        2021年7月22日00:16:48
+        :return:
+        """
+        ts_code = self.df.loc[2, "ts_code"]
+        name_change = response.get_from_waditu(api_name="namechange", ts_code=ts_code, fields="ts_code,name,start_date,end_date")
+        name_change.sort_values(by="start_date", inplace=True, ignore_index=True)
+        name_change.iloc[-1, -1] = datetime.today().strftime("%Y%m%d")
+        name_change.dropna(inplace=True)
+
+        start_date = name_change.iloc[0, -2]
+        end_date = name_change.iloc[-1, -1]
+        name_change["start_date"] = pd.to_datetime(name_change["start_date"])
+        name_change["end_date"] = pd.to_datetime(name_change["end_date"])
+        cal = pd.DataFrame(pd.date_range(start=start_date, end=end_date))
+        name_change = pd.merge(left=cal, right=name_change, how="left", left_on=0, right_on="start_date")
+        del name_change["ts_code"]
+        name_change.fillna(method="ffill", inplace=True)
+        df = pd.merge(left=self.df, right=name_change, how="left", left_on="trade_date", right_on=0)
+        del df[0]
+        df.fillna(method="ffill", inplace=True)
+        del df["start_date"]
+        del df["end_date"]
+        # 计算涨跌停价格
+        df.loc[:, "up_limit"] = df["pre_close"] * 1.1
+        df.loc[:, "down_limit"] = df["pre_close"] * 0.9
+        # st的限制
+        df.loc[df["name"].str.contains("ST" or "st"), "up_limit"] = df["pre_close"] * 1.05
+        df.loc[df["name"].str.contains("ST" or "st"), "down_limit"] = df["pre_close"] * 0.95
+        df["up_limit"] = df["up_limit"].apply(lambda x: float(Decimal(x * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP) / 100))
+        df["down_limit"] = df["down_limit"].apply(lambda x: float(Decimal(x * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP) / 100))
+        # 除去ST的涨停
         return df
 
     def pct_change(self, adj="hfq_", feature="close"):
